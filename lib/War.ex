@@ -1,59 +1,58 @@
 defmodule War do
-  @moduledoc """
-    Documentation for `War`.
-  """
+  import Enum
 
-  @doc """
-    Function stub for deal/1 is given below. Feel free to add
-    as many additional helper functions as you want.
+  @trace false
 
-    The tests for the deal function can be found in test/war_test.exs.
-    You can add your five test cases to this file.
-
-    Run the tester by executing 'mix test' from the war directory
-    (the one containing mix.exs)
-  """
-
-  def deal(shuf) do
-    {player1, player2} = Enum.chunk_every(shuf, length(shuf) / 2)
-    play(player1, player2, [], [])
+  defp play(decks) do
+    round_(:normal, decks, [])
   end
 
-  defp play([], player2, acc1, acc2), do: {acc1, acc2 ++ player2}
-  defp play(player1, [], acc1, acc2), do: {acc1 ++ player1, acc2}
-  defp play([card1 | rest1], [card2 | rest2], acc1, acc2) do
-    case compare_cards(card1, card2) do
-      :player1 ->
-        play(rest1, rest2, acc1 ++ [card1, card2], acc2)
-      :player2 ->
-        play(rest1, rest2, acc1, acc2 ++ [card1, card2])
-      :war ->
-        {new_acc1, new_acc2} = war(rest1, rest2, [card1, card2], [], acc1, acc2)
-        play(new_acc1, new_acc2, [], [])
-    end
+  defp round_(state, {deck_1, deck_2}, pot) do
+    if @trace, do: dbg({state, {deck_1, deck_2}, pot})
+    round(state, {deck_1, deck_2}, pot)
   end
 
-  defp compare_cards(card1, card2) do
-    rank(card1) > rank(card2)
+  defp round(_, {[], []}, _), do: :draw
+  defp round(_, {p1, []}, _), do: p1
+  defp round(_, {[], p2}, _), do: p2
+
+  defp round(:war, {[c, c1 | d1], [c, c2 | d2]}, pot) do
+    round_(:war, {d1, d2}, pot ++ [c, c1, c, c2])
   end
 
-  defp rank(card) do
-    rem(card - 1, 13) + 1
+  defp round(:war, {[c11, c12 | d1], [c21, c22 | d2]}, pot) do
+    round_(:normal, decks(c11, c21, d1, d2, pot ++ [c11, c12, c21, c22]), [])
   end
 
-  defp war(player1, player2, face_down, face_up, acc1, acc2) do
-    [new_card1 | rest1] = player1
-    [new_card2 | rest2] = player2
-    new_face_down = face_down ++ [new_card1, new_card2]
-    new_face_up = face_up ++ [new_card1, new_card2]
+  defp round(_, {[c | d1], [c | d2]}, pot) do
+    round_(:war, {d1, d2}, pot ++ [c, c])
+  end
 
-    case compare_cards(new_card1, new_card2) do
-      :player1 ->
-        {acc1 ++ new_face_up, acc2 ++ new_face_down ++ rest1 ++ rest2}
-      :player2 ->
-        {acc1 ++ new_face_down ++ rest1 ++ rest2, acc2 ++ new_face_up}
-      :war ->
-        war(rest1, rest2, new_face_down, new_face_up, acc1, acc2)
+  defp round(_, {[c1 | d1], [c2 | d2]}, pot) do
+    round_(:normal, decks(c1, c2, d1, d2, [c1, c2]), pot)
+  end
+
+  defp decks(c1, c2, d1, d2, pot) do
+    pot = sort(pot, :desc)
+    if c1 > c2, do: {d1 ++ pot, d2}, else: {d1, d2 ++ pot}
+  end
+
+    defp apply_ace_weight(card) do
+    (card == 1 && 14) || card
+  end
+
+  defp remove_ace_weight(card) do
+    (card == 14 && 1) || card
+  end
+
+  def deal(deck) do
+    deck
+    |> Enum.map(&apply_ace_weight/1)
+    |> split(length(deck) * 2)
+    |> play()
+    |> case do
+      xs when is_list(xs) -> Enum.map(xs, &remove_ace_weight/1)
+      r -> r
     end
   end
 end
