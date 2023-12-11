@@ -15,7 +15,7 @@ defmodule War do
   """
 
   def deal(shuf) do
-    {player1, player2} = Enum.split_every(shuf, length(shuf) / 2)
+    {player1, player2} = Enum.split(shuf, length(shuf) / 2)
     play(player1, player2, [], [])
   end
 
