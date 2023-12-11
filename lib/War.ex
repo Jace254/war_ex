@@ -1,58 +1,62 @@
 defmodule War do
-  import Enum
+  @moduledoc """
+    Documentation for `War`.
+  """
 
-  @trace false
+  @doc """
+    Function stub for deal/1 is given below. Feel free to add
+    as many additional helper functions as you want.
 
-  defp play(decks) do
-    round_(:normal, decks, [])
-  end
+    The tests for the deal function can be found in test/war_test.exs.
+    You can add your five test cases to this file.
 
-  defp round_(state, {deck_1, deck_2}, pot) do
-    if @trace, do: dbg({state, {deck_1, deck_2}, pot})
-    round(state, {deck_1, deck_2}, pot)
-  end
+    Run the tester by executing 'mix test' from the war directory
+    (the one containing mix.exs)
+  """
+    @ace_weight 14
 
-  defp round(_, {[], []}, _), do: :draw
-  defp round(_, {p1, []}, _), do: p1
-  defp round(_, {[], p2}, _), do: p2
+    def deal(shuf) do
+      {p1, p2} =
+        shuf
+        |> Enum.map(&apply_ace_weight/1)
+        |> deal_deck()
 
-  defp round(:war, {[c, c1 | d1], [c, c2 | d2]}, pot) do
-    round_(:war, {d1, d2}, pot ++ [c, c1, c, c2])
-  end
+      winner = play_game(p1, p2)
 
-  defp round(:war, {[c11, c12 | d1], [c21, c22 | d2]}, pot) do
-    round_(:normal, decks(c11, c21, d1, d2, pot ++ [c11, c12, c21, c22]), [])
-  end
+      Enum.map(winner, &remove_ace_weight/1)
+    end
 
-  defp round(_, {[c | d1], [c | d2]}, pot) do
-    round_(:war, {d1, d2}, pot ++ [c, c])
-  end
+    def deal_deck(deck) do
+      {Enum.take_every(deck, 2), Enum.drop_every(deck, 2)}
+    end
 
-  defp round(_, {[c1 | d1], [c2 | d2]}, pot) do
-    round_(:normal, decks(c1, c2, d1, d2, [c1, c2]), pot)
-  end
+    defp play_game(p1, p2, tied \\ [])
 
-  defp decks(c1, c2, d1, d2, pot) do
-    pot = sort(pot, :desc)
-    if c1 > c2, do: {d1 ++ pot, d2}, else: {d1, d2 ++ pot}
-  end
+    defp play_game([], p2, tied), do: p2 ++ tied
+    defp play_game(p1, [], tied), do: p1 ++ tied
+
+    # War, cards tied
+    defp play_game([c | xs], [c | ys], tied) do
+      cards = Enum.sort([c, c] ++ tied, :desc)
+      play_game(xs, ys, cards)
+    end
+
+    # Normal game turn
+    defp play_game([x | xs], [y | ys], tied) do
+      cards = Enum.sort([x, y] ++ tied, :desc)
+
+      if x > y do
+        play_game(xs ++ cards, ys)
+      else
+        play_game(xs, ys ++ cards)
+      end
+    end
 
     defp apply_ace_weight(card) do
-    (card == 1 && 14) || card
-  end
+      (card == 1 && @ace_weight) || card
+    end
 
-  defp remove_ace_weight(card) do
-    (card == 14 && 1) || card
-  end
-
-  def deal(deck) do
-    deck
-    |> Enum.map(&apply_ace_weight/1)
-    |> split(length(deck) * 2)
-    |> play()
-    |> case do
-      xs when is_list(xs) -> Enum.map(xs, &remove_ace_weight/1)
-      r -> r
+    defp remove_ace_weight(card) do
+      (card == @ace_weight && 1) || card
     end
   end
-end
